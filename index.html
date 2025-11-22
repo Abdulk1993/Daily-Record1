@@ -566,15 +566,15 @@
           <td class="col-small">${formatNumberCell(row.pax)}</td>
 
           <td class="col-small">
-            <input type="number" class="numeric-input"
-              data-id="${row.id}" data-field="d"
-              value="${row.d ?? ""}" />
-          </td>
-          <td class="col-small">
-            <input type="number" class="numeric-input"
-              data-id="${row.id}" data-field="w"
-              value="${row.w ?? ""}" />
-          </td>
+  <input type="number" class="numeric-input"
+    data-id="${row.id}" data-field="drivers_count"
+    value="${row.drivers_count ?? row.d ?? ""}" />
+</td>
+<td class="col-small">
+  <input type="number" class="numeric-input"
+    data-id="${row.id}" data-field="workers_count"
+    value="${row.workers_count ?? row.w ?? ""}" />
+</td>
 
           <td class="col-date">${row.flight_date || ""}</td>
           <td class="col-small">${formatNumberCell(row.aobt_to_fb_minutes)}</td>
