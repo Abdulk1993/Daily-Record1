@@ -1,313 +1,918 @@
-<!doctype html>
-<html lang="ar">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Flight Baggage & LB Monitor</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
-    :root{
-      --bg:#eef1f6; --card:#ffffff; --line:#d8dde6; --text:#0f172a;
-      --blue:#2f6fed;
-    }
-    body{font-family:system-ui,Segoe UI,Arial; background:var(--bg); color:var(--text); margin:0; padding:18px;}
-    .header{background:var(--card); padding:14px 16px; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); margin-bottom:12px;}
-    h2{margin:0 0 6px 0;}
-    .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
-    .btn{
-      background:var(--blue); color:white; border:none; padding:8px 12px; border-radius:10px; cursor:pointer;
-      font-weight:600;
-    }
-    .tabs{display:flex; gap:8px; margin-top:10px;}
-    .tab{
-      padding:6px 12px; border-radius:999px; background:#e5e9f2; cursor:pointer; font-weight:600; font-size:14px;
-    }
-    .tab.active{background:var(--blue); color:white;}
-    .table-wrap{
-      background:var(--card); border-radius:12px; padding:10px; box-shadow:0 1px 3px rgba(0,0,0,.06);
-      overflow:auto;
-    }
-    table{border-collapse:collapse; min-width:1400px; width:100%;}
-    thead th{
-      position:sticky; top:0; background:#dbe7ff; z-index:2;
-      font-size:13px; padding:8px 6px; border-bottom:1px solid var(--line); text-align:center;
-      white-space:nowrap;
-    }
-    tbody td{
-      border-bottom:1px solid var(--line);
-      font-size:13px; padding:6px 6px; text-align:center; white-space:nowrap;
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      margin: 0; padding: 0; color: #111827;
     }
 
-    /* inputs */
-    input[type="number"], input[type="text"], input[type="time"]{
-      width:70px; padding:4px 6px; font-size:13px; border:1px solid #c9ced8; border-radius:6px; text-align:center; background:#f9fafb;
+    .app {
+      max-width: 1400px; margin: 24px auto; background: #ffffff;
+      border-radius: 12px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+      padding: 16px 20px 24px;
     }
-    input.wide-text{width:180px; text-align:left;}
-    input.mid-text{width:120px;}
-    input.time{width:86px;}
 
-    /* خلي الأعمدة الضيقة مثل الصورة اليمين */
-    .tiny { width:46px !important; }
-    .small { width:58px !important; }
-    .col-uld-bc-plt-d-w input { width:46px; } /* ULD/BC/PLT/D/W */
+    .app-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; gap: 16px;
+    }
+
+    .app-title { font-size: 20px; font-weight: 700; color: #111827; }
+    .app-subtitle { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+    .header-right { text-align: right; font-size: 11px; color: #9ca3af; }
+    .header-right strong { font-weight: 600; color: #4b5563; }
+
+    .controls-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; gap: 12px; flex-wrap: wrap;
+    }
+    .left-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .right-controls { display: flex; align-items: center; gap: 10px; }
+
+    .btn {
+      border: none; border-radius: 999px; padding: 8px 16px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      white-space: nowrap;
+    }
+    .btn-primary { background: #2563eb; color: #ffffff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-outline {
+      background: #ffffff; color: #111827; border: 1px solid #d1d5db;
+    }
+    .btn-outline:hover { background: #f9fafb; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .btn-save-row {
+      font-size: 11px; padding: 4px 10px; border-radius: 999px; border: none;
+      background: #22c55e; color: #ffffff; cursor: pointer;
+    }
+    .btn-save-row:hover { background: #16a34a; }
+
+    .flights-counter { font-size: 13px; color: #4b5563; }
+    .flights-counter span { font-weight: 600; }
+
+    .terminal-tabs {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .tab {
+      border-radius: 999px; padding: 6px 14px; font-size: 12px; cursor: pointer;
+      border: 1px solid transparent; display: inline-flex; flex-direction: column;
+      align-items: center; justify-content: center; line-height: 1.2; min-width: 70px; text-align: center;
+    }
+    .tab-label-main { font-weight: 700; }
+    .tab-label-sub { font-size: 10px; color: #6b7280; margin-top: 1px; }
+    .tab.active { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
+    .tab:not(.active) { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+    .tab:not(.active):hover { background: #e5e7eb; }
+
+    .table-wrapper {
+      border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; background: #f9fafb;
+    }
+    .table-header {
+      background: linear-gradient(to right, #e0f2fe, #dbeafe);
+      padding: 10px 16px; font-size: 12px; border-bottom: 1px solid #e5e7eb;
+    }
+    .table-header strong { font-weight: 600; }
+
+    .table-scroll { max-height: 520px; overflow: auto; background: #ffffff; }
+
+    table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead { position: sticky; top: 0; z-index: 5; }
+    thead tr th { position: sticky; top: 0; }
+    thead tr { background: #e5f0ff; }
+
+    th, td {
+      border-bottom: 1px solid #e5e7eb; padding: 6px 8px; text-align: center; white-space: nowrap;
+    }
+    th { font-size: 11px; font-weight: 700; color: #374151; }
+    td { font-size: 11px; color: #111827; }
+
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody tr:nth-child(odd) { background: #ffffff; }
+    tbody tr:hover { background: #eff6ff; }
+
+    .col-flt { min-width: 70px; }
+    .col-text-left { text-align: left; }
+    .col-time { min-width: 58px; cursor: pointer; color: #1d4ed8; font-weight: 600; }
+    .col-time:hover { text-decoration: underline; }
+    .col-date { min-width: 74px; }
+    .col-small { min-width: 40px; }
+    .col-status { min-width: 70px; }
+    .col-remark { min-width: 130px; }
+
+    .status-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 2px 10px; border-radius: 999px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .status-ontime { background: #dcfce7; color: #166534; }
+    .status-delayed { background: #fee2e2; color: #b91c1c; }
+    .status-empty  { background: #e5e7eb; color: #374151; }
+
+    select.remark-select {
+      width: 100%; font-size: 11px; padding: 2px 4px; border-radius: 4px;
+      border: 1px solid #d1d5db; background: #ffffff;
+    }
+    input.remark-input {
+      width: 100%; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;
+    }
+    input.numeric-input {
+      width: 60px; font-size: 11px; padding: 2px 4px; border-radius: 4px;
+      border: 1px solid #d1d5db; text-align: center;
+    }
+
+    .footer-note {
+      font-size: 10px; color: #9ca3af; text-align: right; padding: 4px 8px 8px;
+    }
+    .hint-text { font-size: 11px; color: #6b7280; margin-bottom: 6px; }
+
+    .error-box {
+      background: #fee2e2; color: #b91c1c; border-radius: 8px;
+      padding: 8px 10px; font-size: 11px; margin-bottom: 8px; display: none;
+    }
+    .error-box.show { display: block; }
+
+    @media (max-width: 768px) {
+      .app { margin: 8px; padding: 12px; }
+      .app-header { flex-direction: column; align-items: flex-start; }
+      .header-right { text-align: left; }
+    }
+
+    /* ===== Modal (Time Picker) ===== */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+      display: none; align-items: center; justify-content: center; z-index: 999;
+    }
+    .modal-backdrop.show { display: flex; }
+
+    .modal {
+      background: #ffffff; border-radius: 12px; padding: 16px 18px 14px;
+      min-width: 260px; max-width: 90%;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+    }
+
+    .modal-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #111827; }
+    .modal-field-label { font-size: 11px; color: #6b7280; margin-bottom: 6px; }
+
+    .time-picker-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 4px; margin-bottom: 12px;
+    }
+    .time-select { font-size: 14px; padding: 4px 8px; border-radius: 8px; border: 1px solid #d1d5db; }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+    .modal-btn { border-radius: 999px; border: none; font-size: 12px; padding: 6px 12px; cursor: pointer; }
+    .modal-btn.cancel { background: #e5e7eb; color: #374151; }
+    .modal-btn.save { background: #2563eb; color: white; }
   </style>
 </head>
+
 <body>
-
-  <div class="header">
-    <h2>Flight Baggage & LB Monitor</h2>
-    <div class="controls">
-      <button id="refreshBtn" class="btn">Refresh data</button>
-      <div id="countInfo">Flights: 0</div>
+  <div class="app">
+    <div class="app-header">
+      <div>
+        <div class="app-title">Flight Baggage &amp; LB Monitor</div>
+        <div class="app-subtitle">
+          Live daily record from Supabase — filter by terminal and export to Excel (CSV)
+        </div>
+      </div>
+      <div class="header-right">
+        <div>Supabase Project: <strong>wqhkvjwpdfblefycxawv</strong></div>
+        <div id="updatedAt">Updated: -</div>
+      </div>
     </div>
-    <div class="tabs" id="tabs"></div>
+
+    <div class="controls-row">
+      <div class="left-controls">
+        <button id="refreshBtn" class="btn btn-primary">Refresh data</button>
+        <div id="flightsCounter" class="flights-counter">
+          Flights: <span>0</span> (ALL terminals)
+        </div>
+      </div>
+      <div class="right-controls">
+        <button id="exportBtn" class="btn btn-outline btn-sm">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="terminal-tabs">
+      <button class="tab active" data-terminal="ALL">
+        <span class="tab-label-main">ALL</span>
+        <span class="tab-label-sub">All terminals</span>
+      </button>
+      <button class="tab" data-terminal="T1">
+        <span class="tab-label-main">T1</span>
+        <span class="tab-label-sub">Terminal 1</span>
+      </button>
+      <button class="tab" data-terminal="T3">
+        <span class="tab-label-main">T3</span>
+        <span class="tab-label-sub">Terminal 3</span>
+      </button>
+      <button class="tab" data-terminal="T4">
+        <span class="tab-label-main">T4</span>
+        <span class="tab-label-sub">Terminal 4</span>
+      </button>
+    </div>
+
+    <div class="hint-text">
+      Daily record view — use terminal tabs to filter and Export CSV to download.
+    </div>
+
+    <div id="errorBox" class="error-box"></div>
+
+    <div class="table-wrapper">
+      <div class="table-header">
+        <strong>FLIGHT DAILY RECORD</strong>
+        <span style="margin-left: 6px; color: #6b7280">
+          Showing STA / ATA / baggage times, FB/LB status and remarks
+        </span>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-flt">FLT</th>
+              <th class="col-small">TEP</th>
+              <th class="col-time">STA</th>
+              <th class="col-time">ATA</th>
+              <th class="col-small">BDY</th>
+              <th class="col-small">TAR</th>
+              <th class="col-small">ORG</th>
+              <th class="col-small">Belt</th>
+              <th class="col-time">F ULD</th>
+              <th class="col-time">F BAG</th>
+              <th class="col-time">L ULD</th>
+              <th class="col-time">L BAG</th>
+              <th class="col-small">ULD</th>
+              <th class="col-small">BC</th>
+              <th class="col-small">PLT</th>
+              <th class="col-small">PAX</th>
+              <th class="col-small">D</th>
+              <th class="col-small">W</th>
+              <th class="col-date">Date</th>
+              <th class="col-small">AOBT to FB</th>
+              <th class="col-small">AOBT to LB</th>
+              <th class="col-status">FB status</th>
+              <th class="col-status">LB status</th>
+              <th class="col-small">Terminated Bags</th>
+              <th class="col-small">Domestic Transit</th>
+              <th class="col-small">International Transit</th>
+              <th class="col-small">Left Behind</th>
+              <th class="col-remark">Drop List Remark 1</th>
+              <th class="col-remark">Drop List Remark 2</th>
+              <th class="col-remark">Drop List Remark 3</th>
+              <th class="col-remark">Additional Remark</th>
+              <th class="col-small">Save</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="footer-note">
+        Local file — data stays on your machine. Use "Export CSV" to share.
+      </div>
+    </div>
   </div>
 
-  <div class="table-wrap">
-    <table id="tbl">
-      <thead>
-        <tr>
-          <th>FLT</th>
-          <th>TEP</th>
-          <th>STA</th>
-          <th>ATA</th>
-          <th>BDY</th>
-          <th>TAR</th>
-          <th>ORG</th>
-          <th>Belt</th>
-          <th>F ULD</th>
-          <th>F BAG</th>
-          <th>L ULD</th>
-          <th>L BAG</th>
-
-          <th>ULD</th>
-          <th>BC</th>
-          <th>PLT</th>
-          <th>D</th>
-          <th>W</th>
-
-          <th>Terminated bags</th>
-          <th>Domestic transit</th>
-          <th>International transit</th>
-
-          <th>Drop list remark 1</th>
-          <th>Drop list remark 2</th>
-          <th>Drop list remark 3</th>
-          <th>Additional remark</th>
-          <th>Date</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <!-- Modal for time picker -->
+  <div id="timeModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-title" id="timeModalTitle">Set time</div>
+      <div class="modal-field-label" id="timeModalFieldLabel"></div>
+      <div class="time-picker-row">
+        <select id="timeHour" class="time-select"></select>
+        <span>:</span>
+        <select id="timeMinute" class="time-select"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="timeModalCancelBtn">Cancel</button>
+        <button class="modal-btn save" id="timeModalSaveBtn">Save</button>
+      </div>
+    </div>
   </div>
 
-<script>
-/*** 1) حط معلوماتك هنا ***/
-const SUPABASE_URL = "PUT_YOUR_SUPABASE_URL_HERE";
-const SUPABASE_KEY = "PUT_YOUR_SUPABASE_ANON_KEY_HERE";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <script>
+    const SUPABASE_URL = "https://wqhkvjwpdfblefycxawv.supabase.co";
+    const SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaGt2andwZGZibGVmeWN4YXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxMzI1MDcsImV4cCI6MjA3ODcwODUwN30.4sDEWDkwdjy_C_4bBzvwzZ8OfAMyA0x7beNiaoRfals";
 
-/*** 2) إعدادات عامة ***/
-const terminals = ["ALL", "T1", "T3", "T4"];
-let activeTerminal = "ALL";
-let flights = [];
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/*** Helpers ***/
-const fmtTime = (ts) => {
-  if(!ts) return "";
-  const d = new Date(ts);
-  if(Number.isNaN(d.getTime())) return "";
-  const hh = String(d.getHours()).padStart(2,"0");
-  const mm = String(d.getMinutes()).padStart(2,"0");
-  return `${hh}:${mm}`;
-};
+    let allFlights = [];
+    let currentTerminal = "ALL";
 
-// يصنع Timestamp بنفس تاريخ الرحلة أو نفس تاريخ القيمة القديمة
-const applyTimeToTimestamp = (oldTs, timeStr, flightDateStr) => {
-  if(!timeStr) return null;
-  let baseDate = null;
+    const tableBody = document.getElementById("tableBody");
+    const flightsCounter = document.getElementById("flightsCounter");
+    const updatedAtSpan = document.getElementById("updatedAt");
+    const errorBox = document.getElementById("errorBox");
 
-  if(oldTs){
-    const dOld = new Date(oldTs);
-    if(!Number.isNaN(dOld.getTime())) baseDate = dOld;
-  }
-  if(!baseDate && flightDateStr){
-    const dFd = new Date(flightDateStr);
-    if(!Number.isNaN(dFd.getTime())) baseDate = dFd;
-  }
-  if(!baseDate){
-    baseDate = new Date(); // fallback
-  }
+    const timeModalBackdrop = document.getElementById("timeModalBackdrop");
+    const timeHourSelect = document.getElementById("timeHour");
+    const timeMinuteSelect = document.getElementById("timeMinute");
+    const timeModalFieldLabel = document.getElementById("timeModalFieldLabel");
+    const timeModalCancelBtn = document.getElementById("timeModalCancelBtn");
+    const timeModalSaveBtn = document.getElementById("timeModalSaveBtn");
 
-  const [hh, mm] = timeStr.split(":").map(Number);
-  baseDate.setHours(hh, mm, 0, 0);
-  return baseDate.toISOString();
-};
+    let activeTimeField = null;
+    let activeTimeRowId = null;
+    let activeTimeFlightDate = null;
 
-async function updateCell(id, patch){
-  const { error } = await supabase.from("flights").update(patch).eq("id", id);
-  if(error){
-    console.error(error);
-    alert("فشل الحفظ: " + error.message);
-  }
-}
+    const DROP_REMARKS = [
+      "A/C Movement","Absence of Baggage Ramp Representative","Aircraft compartment door jamming",
+      "Aircraft technical issue","Assign only 1 driver","Transit offloaded before local baggage",
+      "Cargo offloaded before PAX baggage","Carousel overstock of baggage","Compartment blocked by Catering/ Fuel truck",
+      "Dust condition","Rain condition","Fog condition","GH Lack of supervision in baggage hall",
+      "GH Lack of supervision under A/C","Jam fault","K9 unit inspection","Lack of operators",
+      "Mixed Transit Baggage","No headset man under A/C","No Standby driver to remove empty ULDs",
+      "No Standby driver due to shift change","No standby driver under A/C","No standby Equipment under A/C",
+      "No standby group under A/C","No Standby labor due to shift change","No standby labor in baggage hall",
+      "Power Outage","Equipment defect","Shortage of driver","Shortage of equipment in baggage hall",
+      "Shortage of equipment under A/C","Shortage of manpower in baggage hall","Shortage of manpower under A/C",
+      "Stand changed while landing","System failure","Using Pallet","Workstation operator not standing by for the flight",
+      "X-Ray breakdown","GH miscommunication","No Ground power under A/C","All ULDs received in one trip",
+      "AMP System Failure","BHS System Failure","ATA Late Recorded","Customs logout",
+    ];
 
-/*** Fetch data ***/
-async function loadFlights(){
-  let q = supabase.from("flights").select(`
-    id,
-    flt, tep, sta, ata, bdy, tar, org, belt,
-    f_uld, f_bag, l_uld, l_bag,
-    uld, bc, plt, d, w,
-    terminated_bags, domestic_transit, international_transit,
-    drop_list_remark1, drop_list_remark2, drop_list_remark3,
-    additional_remark, flight_date, terminal
-  `).order("sta");
+    function showError(message) {
+      if (!message) {
+        errorBox.classList.remove("show");
+        errorBox.textContent = "";
+        return;
+      }
+      errorBox.textContent = message;
+      errorBox.classList.add("show");
+    }
 
-  if(activeTerminal !== "ALL"){
-    q = q.eq("terminal", activeTerminal);
-  }
+    function formatNumberCell(value) {
+      if (value === null || value === undefined) return "";
+      const n = Number(value);
+      if (Number.isNaN(n)) return "";
+      if (n % 1 === 0) return String(n);
+      return n.toFixed(2).replace(/\.?0+$/, "");
+    }
 
-  const { data, error } = await q;
-  if(error){ console.error(error); alert(error.message); return; }
+    function renderStatusPill(text) {
+      if (!text) return '<span class="status-pill status-empty">N/A</span>';
+      const upper = String(text).toUpperCase();
+      if (upper === "ONTIME" || upper === "ON TIME") {
+        return '<span class="status-pill status-ontime">ONTIME</span>';
+      }
+      if (upper === "DELAYED") {
+        return '<span class="status-pill status-delayed">DELAYED</span>';
+      }
+      return `<span class="status-pill status-empty">${upper}</span>`;
+    }
 
-  flights = data || [];
-  renderTable();
-}
+    function createRemarkSelect(value, rowId, field) {
+      let optionsHtml = `<option value=""></option>`;
+      for (const item of DROP_REMARKS) {
+        const selected = item === value ? "selected" : "";
+        optionsHtml += `<option value="${item}" ${selected}>${item}</option>`;
+      }
+      return `
+        <select class="remark-select"
+          data-id="${rowId}" data-field="${field}">
+          ${optionsHtml}
+        </select>
+      `;
+    }
 
-/*** Render ***/
-function renderTable(){
-  document.getElementById("countInfo").textContent =
-    `Flights: ${flights.length} (${activeTerminal === "ALL" ? "ALL terminals" : "Terminal " + activeTerminal})`;
+    function createRemarkInput(value, rowId, field) {
+      const safe = value || "";
+      return `
+        <input class="remark-input" type="text" value="${safe}"
+          data-id="${rowId}" data-field="${field}" />
+      `;
+    }
 
-  const tbody = document.querySelector("#tbl tbody");
-  tbody.innerHTML = "";
+    function parseDisplayTime(str) {
+      if (!str) return { hour: "00", minute: "00" };
+      const parts = str.split(":");
+      if (parts.length >= 2) {
+        let h = parts[0].padStart(2, "0").slice(-2);
+        let m = parts[1].padStart(2, "0").slice(-2);
+        return { hour: h, minute: m };
+      }
+      return { hour: "00", minute: "00" };
+    }
 
-  for(const f of flights){
-    const tr = document.createElement("tr");
+    function showTimeModal(rowId, field, label, displayTime, flightDate) {
+      activeTimeRowId = rowId;
+      activeTimeField = field;
+      activeTimeFlightDate = flightDate;
 
-    const tdText = (v) => {
-      const td = document.createElement("td");
-      td.textContent = v ?? "";
-      return td;
-    };
+      timeModalFieldLabel.textContent = label;
 
-    tr.appendChild(tdText(f.flt));
-    tr.appendChild(tdText(f.tep));
-    tr.appendChild(tdText(fmtTime(f.sta)));
-    tr.appendChild(tdText(fmtTime(f.ata)));
-    tr.appendChild(tdText(f.bdy));
-    tr.appendChild(tdText(f.tar));
-    tr.appendChild(tdText(f.org));
-    tr.appendChild(tdText(f.belt));
+      const parsed = parseDisplayTime(displayTime);
+      timeHourSelect.value = parsed.hour;
+      timeMinuteSelect.value = parsed.minute;
 
-    // Time inputs: F ULD / F BAG / L ULD / L BAG
-    tr.appendChild(timeInputCell(f, "f_uld"));
-    tr.appendChild(timeInputCell(f, "f_bag"));
-    tr.appendChild(timeInputCell(f, "l_uld"));
-    tr.appendChild(timeInputCell(f, "l_bag"));
+      timeModalBackdrop.classList.add("show");
+    }
 
-    // tiny numeric inputs ULD BC PLT D W
-    tr.appendChild(numInputCell(f, "uld", "tiny col-uld-bc-plt-d-w"));
-    tr.appendChild(numInputCell(f, "bc",  "tiny col-uld-bc-plt-d-w"));
-    tr.appendChild(numInputCell(f, "plt", "tiny col-uld-bc-plt-d-w"));
-    tr.appendChild(numInputCell(f, "d",   "tiny col-uld-bc-plt-d-w"));
-    tr.appendChild(numInputCell(f, "w",   "tiny col-uld-bc-plt-d-w"));
+    function hideTimeModal() {
+      activeTimeRowId = null;
+      activeTimeField = null;
+      activeTimeFlightDate = null;
+      timeModalBackdrop.classList.remove("show");
+    }
 
-    tr.appendChild(numInputCell(f, "terminated_bags", "small"));
-    tr.appendChild(numInputCell(f, "domestic_transit", "small"));
-    tr.appendChild(numInputCell(f, "international_transit", "small"));
+    // ===== FIX 1: Normalize flight_date to YYYY-MM-DD =====
+    function normalizeFlightDate(flightDate) {
+      if (!flightDate) return null;
 
-    tr.appendChild(textInputCell(f, "drop_list_remark1", "mid-text"));
-    tr.appendChild(textInputCell(f, "drop_list_remark2", "mid-text"));
-    tr.appendChild(textInputCell(f, "drop_list_remark3", "mid-text"));
-    tr.appendChild(textInputCell(f, "additional_remark", "wide-text"));
+      // If already Date object
+      if (flightDate instanceof Date && !Number.isNaN(flightDate.getTime())) {
+        return flightDate.toISOString().slice(0, 10);
+      }
 
-    tr.appendChild(tdText(f.flight_date));
+      const s = String(flightDate).trim();
 
-    tbody.appendChild(tr);
-  }
-}
+      // ISO date already?
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-function timeInputCell(row, col){
-  const td = document.createElement("td");
-  const input = document.createElement("input");
-  input.type = "time";
-  input.className = "time";
-  input.value = fmtTime(row[col]);
-  input.addEventListener("change", async (e)=>{
-    const t = e.target.value; // "HH:MM"
-    const newTs = applyTimeToTimestamp(row[col], t, row.flight_date);
-    row[col] = newTs;
-    await updateCell(row.id, { [col]: newTs });
-  });
-  td.appendChild(input);
-  return td;
-}
+      // like "2025-09-27T00:00:00"
+      if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);
 
-function numInputCell(row, col, cls=""){
-  const td = document.createElement("td");
-  const input = document.createElement("input");
-  input.type = "number";
-  input.className = cls;
-  input.value = row[col] ?? "";
-  input.addEventListener("change", async (e)=>{
-    const v = e.target.value === "" ? null : Number(e.target.value);
-    row[col] = v;
-    await updateCell(row.id, { [col]: v });
-  });
-  td.appendChild(input);
-  return td;
-}
+      // like "27-Sep" or "27-Sep-2025"
+      const m = s.match(/^(\d{1,2})-([A-Za-z]{3})(?:-(\d{4}))?$/);
+      if (m) {
+        const day = m[1].padStart(2, "0");
+        const monStr = m[2].toLowerCase();
+        const year = m[3] || String(new Date().getFullYear());
+        const map = {
+          jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",
+          jul:"07",aug:"08",sep:"09",oct:"10",nov:"11",dec:"12",
+        };
+        const month = map[monStr];
+        if (month) return `${year}-${month}-${day}`;
+      }
 
-function textInputCell(row, col, cls=""){
-  const td = document.createElement("td");
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = cls;
-  input.value = row[col] ?? "";
-  input.addEventListener("change", async (e)=>{
-    const v = e.target.value.trim() === "" ? null : e.target.value;
-    row[col] = v;
-    await updateCell(row.id, { [col]: v });
-  });
-  td.appendChild(input);
-  return td;
-}
+      // fallback try Date parse
+      const d = new Date(s);
+      if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
 
-/*** Tabs ***/
-function renderTabs(){
-  const tabsEl = document.getElementById("tabs");
-  tabsEl.innerHTML = "";
-  terminals.forEach(t=>{
-    const b = document.createElement("div");
-    b.className = "tab" + (t===activeTerminal ? " active":"");
-    b.textContent = t;
-    b.onclick = ()=>{ activeTerminal = t; renderTabs(); loadFlights(); };
-    tabsEl.appendChild(b);
-  });
-}
+      return null;
+    }
 
-/*** Realtime (تحديث لحظي للجميع) ***/
-function setupRealtime(){
-  supabase.channel("flights-changes")
-    .on("postgres_changes",
-        { event:"*", schema:"public", table:"flights" },
-        (payload)=>{
-          // أبسط حل: إعادة تحميل البيانات عند أي تغيير
-          loadFlights();
-        })
-    .subscribe();
-}
+    function buildTimestampFromFlightDate(flightDate, hour, minute) {
+      const isoDate = normalizeFlightDate(flightDate);
+      if (!isoDate) {
+        // if we can't normalize, just return null to avoid invalid timestamp
+        return null;
+      }
+      return `${isoDate}T${hour}:${minute}:00`;
+    }
 
-/*** Init ***/
-document.getElementById("refreshBtn").onclick = loadFlights;
-renderTabs();
-loadFlights();
-setupRealtime();
-</script>
+    function formatTimeForDisplay(value) {
+      if (!value) return "";
+      if (typeof value === "string" && /^[0-2]\d:[0-5]\d/.test(value)) {
+        return value.slice(0, 5);
+      }
+      try {
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return value;
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        return `${hh}:${mm}`;
+      } catch {
+        return value;
+      }
+    }
 
+    function renderTable() {
+      tableBody.innerHTML = "";
+
+      const rowsToShow =
+        currentTerminal === "ALL"
+          ? allFlights
+          : allFlights.filter((f) => (f.tep || "").trim() === currentTerminal);
+
+      for (const row of rowsToShow) {
+        const tr = document.createElement("tr");
+
+        const fUldDisplay = formatTimeForDisplay(row.f_uld);
+        const fBagDisplay = formatTimeForDisplay(row.f_bag);
+        const lUldDisplay = formatTimeForDisplay(row.l_uld);
+        const lBagDisplay = formatTimeForDisplay(row.l_bag);
+
+        tr.innerHTML = `
+          <td class="col-flt col-text-left">${row.flt || ""}</td>
+          <td class="col-small">${row.tep || ""}</td>
+          <td class="col-time">${formatTimeForDisplay(row.sta)}</td>
+          <td class="col-time">${formatTimeForDisplay(row.ata)}</td>
+          <td class="col-small">${row.bdy || ""}</td>
+          <td class="col-small">${row.tar || ""}</td>
+          <td class="col-small">${row.org || ""}</td>
+          <td class="col-small">${row.belt || ""}</td>
+
+          <td class="col-time time-cell"
+              data-id="${row.id}"
+              data-field="f_uld"
+              data-date="${row.flight_date || ""}"
+              data-label="F ULD (First ULD time)">
+              ${fUldDisplay}
+          </td>
+          <td class="col-time time-cell"
+              data-id="${row.id}"
+              data-field="f_bag"
+              data-date="${row.flight_date || ""}"
+              data-label="F BAG (First bag time)">
+              ${fBagDisplay}
+          </td>
+          <td class="col-time time-cell"
+              data-id="${row.id}"
+              data-field="l_uld"
+              data-date="${row.flight_date || ""}"
+              data-label="L ULD (Last ULD time)">
+              ${lUldDisplay}
+          </td>
+          <td class="col-time time-cell"
+              data-id="${row.id}"
+              data-field="l_bag"
+              data-date="${row.flight_date || ""}"
+              data-label="L BAG (Last bag time)">
+              ${lBagDisplay}
+          </td>
+
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="uld_count"
+              value="${row.uld_count ?? ""}" />
+          </td>
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="bc_count"
+              value="${row.bc_count ?? ""}" />
+          </td>
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="plt_count"
+              value="${row.plt_count ?? ""}" />
+          </td>
+
+          <td class="col-small">${formatNumberCell(row.pax)}</td>
+
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="d"
+              value="${row.d ?? ""}" />
+          </td>
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="w"
+              value="${row.w ?? ""}" />
+          </td>
+
+          <td class="col-date">${row.flight_date || ""}</td>
+          <td class="col-small">${formatNumberCell(row.aobt_to_fb_minutes)}</td>
+          <td class="col-small">${formatNumberCell(row.aobt_to_lb_minutes)}</td>
+          <td class="col-status">${renderStatusPill(row.fb_status)}</td>
+          <td class="col-status">${renderStatusPill(row.lb_status)}</td>
+
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="terminated_bags"
+              value="${row.terminated_bags ?? ""}" />
+          </td>
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="domestic_transit"
+              value="${row.domestic_transit ?? ""}" />
+          </td>
+          <td class="col-small">
+            <input type="number" class="numeric-input"
+              data-id="${row.id}" data-field="international_transit"
+              value="${row.international_transit ?? ""}" />
+          </td>
+
+          <td class="col-small">${formatNumberCell(row.left_behind)}</td>
+
+          <td class="col-remark">${createRemarkSelect(row.drop_list_remark1, row.id, "drop_list_remark1")}</td>
+          <td class="col-remark">${createRemarkSelect(row.drop_list_remark2, row.id, "drop_list_remark2")}</td>
+          <td class="col-remark">${createRemarkSelect(row.drop_list_remark3, row.id, "drop_list_remark3")}</td>
+          <td class="col-remark">${createRemarkInput(row.additional_remark, row.id, "additional_remark")}</td>
+
+          <td class="col-small">
+            <button class="btn-save-row" data-id="${row.id}">Save</button>
+          </td>
+        `;
+
+        tableBody.appendChild(tr);
+      }
+
+      const shown = rowsToShow.length;
+      flightsCounter.innerHTML = `Flights: <span>${shown}</span> ${
+        currentTerminal === "ALL" ? "(ALL terminals)" : `(Terminal ${currentTerminal})`
+      }`;
+
+      attachTimeCellHandlers();
+      attachSaveButtons();
+      attachAutoSaveHandlers();
+    }
+
+    function attachTimeCellHandlers() {
+      document.querySelectorAll(".time-cell").forEach((cell) => {
+        cell.addEventListener("click", () => {
+          showTimeModal(
+            cell.getAttribute("data-id"),
+            cell.getAttribute("data-field"),
+            cell.getAttribute("data-label"),
+            cell.textContent.trim(),
+            cell.getAttribute("data-date") || ""
+          );
+        });
+      });
+    }
+
+    function attachSaveButtons() {
+      document.querySelectorAll(".btn-save-row").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const rowId = btn.getAttribute("data-id");
+          await saveNumericFields(rowId);
+        });
+      });
+    }
+
+    // ===== FIX 2: Auto-save (debounced) =====
+    const pendingTimers = new Map(); // key: `${id}:${field}` => timerId
+
+    function scheduleSave(rowId, field, value) {
+      const key = `${rowId}:${field}`;
+      if (pendingTimers.has(key)) clearTimeout(pendingTimers.get(key));
+      const t = setTimeout(() => {
+        pendingTimers.delete(key);
+        saveSingleField(rowId, field, value);
+      }, 600);
+      pendingTimers.set(key, t);
+    }
+
+    async function saveSingleField(rowId, field, value) {
+      try {
+        showError("");
+
+        const updateObj = {};
+        updateObj[field] = value;
+
+        const { error } = await supabaseClient
+          .from("flights")
+          .update(updateObj)
+          .eq("id", rowId);
+
+        if (error) {
+          console.error(error);
+          showError("Error saving field: " + error.message);
+          return;
+        }
+
+        // update local cache بدون ريفرش كامل
+        const idx = allFlights.findIndex(r => String(r.id) === String(rowId));
+        if (idx !== -1) allFlights[idx][field] = value;
+
+      } catch (err) {
+        console.error(err);
+        showError("Unexpected error while saving field.");
+      }
+    }
+
+    function attachAutoSaveHandlers() {
+      // numeric autosave on input/blur
+      document.querySelectorAll(".numeric-input").forEach(inp => {
+        inp.addEventListener("input", () => {
+          const rowId = inp.getAttribute("data-id");
+          const field = inp.getAttribute("data-field");
+          const v = inp.value === "" ? null : Number(inp.value);
+          scheduleSave(rowId, field, v);
+        });
+        inp.addEventListener("blur", () => {
+          const rowId = inp.getAttribute("data-id");
+          const field = inp.getAttribute("data-field");
+          const v = inp.value === "" ? null : Number(inp.value);
+          scheduleSave(rowId, field, v);
+        });
+      });
+
+      // remark select autosave on change
+      document.querySelectorAll(".remark-select").forEach(sel => {
+        sel.addEventListener("change", () => {
+          const rowId = sel.getAttribute("data-id");
+          const field = sel.getAttribute("data-field");
+          const v = sel.value || null;
+          scheduleSave(rowId, field, v);
+        });
+      });
+
+      // additional remark autosave on input/blur
+      document.querySelectorAll(".remark-input").forEach(inp => {
+        inp.addEventListener("input", () => {
+          const rowId = inp.getAttribute("data-id");
+          const field = inp.getAttribute("data-field");
+          const v = inp.value.trim() || null;
+          scheduleSave(rowId, field, v);
+        });
+        inp.addEventListener("blur", () => {
+          const rowId = inp.getAttribute("data-id");
+          const field = inp.getAttribute("data-field");
+          const v = inp.value.trim() || null;
+          scheduleSave(rowId, field, v);
+        });
+      });
+    }
+
+    async function saveNumericFields(rowId) {
+      try {
+        showError("");
+
+        const inputs = document.querySelectorAll(`.numeric-input[data-id="${rowId}"]`);
+        const updateObj = {};
+
+        inputs.forEach((inp) => {
+          const field = inp.getAttribute("data-field");
+          const value = inp.value === "" ? null : Number(inp.value);
+          updateObj[field] = value;
+        });
+
+        const { error } = await supabaseClient
+          .from("flights")
+          .update(updateObj)
+          .eq("id", rowId);
+
+        if (error) {
+          console.error(error);
+          showError("Error saving numeric fields: " + error.message);
+          return;
+        }
+
+        await loadFlights();
+      } catch (err) {
+        console.error(err);
+        showError("Unexpected error while saving numeric fields.");
+      }
+    }
+
+    async function saveTimeField() {
+      if (!activeTimeRowId || !activeTimeField) return;
+
+      const hour = timeHourSelect.value;
+      const minute = timeMinuteSelect.value;
+
+      const ts = buildTimestampFromFlightDate(activeTimeFlightDate, hour, minute);
+      if (!ts) {
+        showError("Can't save time: invalid flight_date format in view.");
+        return;
+      }
+
+      try {
+        showError("");
+
+        const updateObj = {};
+        updateObj[activeTimeField] = ts;
+
+        const { error } = await supabaseClient
+          .from("flights")
+          .update(updateObj)
+          .eq("id", activeTimeRowId);
+
+        if (error) {
+          console.error(error);
+          showError("Error saving time: " + error.message);
+          return;
+        }
+
+        hideTimeModal();
+        await loadFlights();
+      } catch (err) {
+        console.error(err);
+        showError("Unexpected error while saving time.");
+      }
+    }
+
+    async function loadFlights() {
+      showError("");
+
+      const { data, error } = await supabaseClient
+        .from("daily_record")
+        .select("*")
+        .order("sta", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        showError("Error loading data from Supabase: " + error.message);
+        allFlights = [];
+      } else {
+        allFlights = data || [];
+      }
+
+      updatedAtSpan.textContent = "Updated: " + new Date().toLocaleString("en-GB");
+      renderTable();
+    }
+
+    function initTabs() {
+      document.querySelectorAll(".tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          currentTerminal = btn.getAttribute("data-terminal");
+          renderTable();
+        });
+      });
+    }
+
+    function initTimeSelectors() {
+      timeHourSelect.innerHTML = "";
+      timeMinuteSelect.innerHTML = "";
+
+      for (let h = 0; h < 24; h++) {
+        const v = String(h).padStart(2, "0");
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = v;
+        timeHourSelect.appendChild(opt);
+      }
+
+      for (let m = 0; m < 60; m++) {
+        const v = String(m).padStart(2, "0");
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = v;
+        timeMinuteSelect.appendChild(opt);
+      }
+
+      timeModalCancelBtn.addEventListener("click", hideTimeModal);
+      timeModalSaveBtn.addEventListener("click", saveTimeField);
+
+      timeModalBackdrop.addEventListener("click", (e) => {
+        if (e.target === timeModalBackdrop) hideTimeModal();
+      });
+    }
+
+    function exportCSV() {
+      const rowsToExport =
+        currentTerminal === "ALL"
+          ? allFlights
+          : allFlights.filter((f) => (f.tep || "").trim() === currentTerminal);
+
+      const header = [
+        "FLT","TEP","STA","ATA","BDY","TAR","ORG","Belt",
+        "F ULD","F BAG","L ULD","L BAG","ULD","BC","PLT","PAX","D","W",
+        "Date","AOBT to FB","AOBT to LB","FB status","LB status",
+        "Terminated Bags","Domestic Transit","International Transit","Left Behind",
+      ];
+
+      const csvRows = [header.join(",")];
+
+      for (const row of rowsToExport) {
+        const r = [
+          row.flt || "", row.tep || "",
+          formatTimeForDisplay(row.sta), formatTimeForDisplay(row.ata),
+          row.bdy || "", row.tar || "", row.org || "", row.belt || "",
+          formatTimeForDisplay(row.f_uld), formatTimeForDisplay(row.f_bag),
+          formatTimeForDisplay(row.l_uld), formatTimeForDisplay(row.l_bag),
+          row.uld_count ?? "", row.bc_count ?? "", row.plt_count ?? "",
+          row.pax ?? "", row.d ?? "", row.w ?? "",
+          row.flight_date || "", row.aobt_to_fb_minutes ?? "", row.aobt_to_lb_minutes ?? "",
+          row.fb_status || "", row.lb_status || "",
+          row.terminated_bags ?? "", row.domestic_transit ?? "", row.international_transit ?? "",
+          row.left_behind ?? "",
+        ].map((val) => {
+          const v = val === null || val === undefined ? "" : String(val);
+          if (v.includes(",") || v.includes('"') || v.includes("\n")) {
+            return `"${v.replace(/"/g, '""')}"`;
+          }
+          return v;
+        });
+
+        csvRows.push(r.join(","));
+      }
+
+      const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const datePart = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `daily_record_${currentTerminal}_${datePart}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", loadFlights);
+    document.getElementById("exportBtn").addEventListener("click", exportCSV);
+
+    initTabs();
+    initTimeSelectors();
+    loadFlights();
+  </script>
 </body>
 </html>
