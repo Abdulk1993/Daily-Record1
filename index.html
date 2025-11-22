@@ -1,599 +1,313 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Flight Baggage & LB Monitor</title>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
-      --bg:#f6f8fb;
-      --card:#ffffff;
-      --line:#e5e9f0;
-      --text:#1f2937;
-      --muted:#6b7280;
-      --blue:#2563eb;
-      --blue-2:#1d4ed8;
-      --green:#10b981;
-      --red:#ef4444;
-      --amber:#f59e0b;
-      --chip:#eef2ff;
+      --bg:#eef1f6; --card:#ffffff; --line:#d8dde6; --text:#0f172a;
+      --blue:#2f6fed;
     }
-
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:var(--bg);
-      color:var(--text);
-    }
-
-    header{
-      padding:16px 18px 8px;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    h1{
-      font-size:20px;
-      margin:0;
-      font-weight:700;
-    }
-    .subtitle{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:2px;
-    }
-    .topbar{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      width:100%;
-      flex-wrap:wrap;
-    }
-    button{
-      background:var(--blue);
-      color:white;
-      border:0;
-      padding:8px 12px;
-      border-radius:10px;
-      cursor:pointer;
+    body{font-family:system-ui,Segoe UI,Arial; background:var(--bg); color:var(--text); margin:0; padding:18px;}
+    .header{background:var(--card); padding:14px 16px; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); margin-bottom:12px;}
+    h2{margin:0 0 6px 0;}
+    .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .btn{
+      background:var(--blue); color:white; border:none; padding:8px 12px; border-radius:10px; cursor:pointer;
       font-weight:600;
-      box-shadow:0 1px 0 rgba(0,0,0,.05);
     }
-    button:hover{ background:var(--blue-2); }
-    .count{ font-size:14px; color:var(--muted); }
-
-    .tabs{
-      display:flex;
-      gap:8px;
-      padding:0 18px 10px;
-      flex-wrap:wrap;
-    }
+    .tabs{display:flex; gap:8px; margin-top:10px;}
     .tab{
-      padding:8px 12px;
-      border-radius:999px;
-      background:#e9edf5;
-      color:#111827;
-      font-weight:700;
-      font-size:12px;
-      cursor:pointer;
-      user-select:none;
+      padding:6px 12px; border-radius:999px; background:#e5e9f2; cursor:pointer; font-weight:600; font-size:14px;
     }
-    .tab.active{ background:var(--blue); color:white; }
-
-    .wrap{
-      padding:0 12px 24px;
-    }
-    .card{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:10px;
+    .tab.active{background:var(--blue); color:white;}
+    .table-wrap{
+      background:var(--card); border-radius:12px; padding:10px; box-shadow:0 1px 3px rgba(0,0,0,.06);
       overflow:auto;
-      box-shadow:0 8px 30px rgba(31,41,55,.06);
     }
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-      min-width:1250px;
-      table-layout:fixed;
-      font-size:12px;
-    }
+    table{border-collapse:collapse; min-width:1400px; width:100%;}
     thead th{
-      position:sticky; top:0;
-      background:#eaf1ff;
-      border-bottom:1px solid var(--line);
-      padding:8px 6px;
-      text-align:center;
-      font-weight:800;
+      position:sticky; top:0; background:#dbe7ff; z-index:2;
+      font-size:13px; padding:8px 6px; border-bottom:1px solid var(--line); text-align:center;
       white-space:nowrap;
     }
     tbody td{
       border-bottom:1px solid var(--line);
-      padding:6px;
-      text-align:center;
-      white-space:nowrap;
-      vertical-align:middle;
-    }
-    tbody tr:hover{ background:#f9fbff; }
-
-    /* عرض الأعمدة — مهم عشان المسافات تصير مرتبة */
-    col.w-flt{ width:70px }
-    col.w-tep{ width:50px }
-    col.w-time{ width:60px }
-    col.w-small{ width:48px }     /* ULD/BC/PLT/D/W */
-    col.w-num{ width:60px }       /* biggest numeric */
-    col.w-remark{ width:160px }   /* remarks */
-
-    .pill{
-      display:inline-block;
-      padding:2px 8px;
-      border-radius:999px;
-      font-weight:800;
-      font-size:11px;
-      background:var(--chip);
-    }
-    .pill.green{ background:#dcfce7; color:#166534; }
-    .pill.red{ background:#fee2e2; color:#991b1b; }
-    .pill.amber{ background:#fef3c7; color:#92400e; }
-
-    input.cell{
-      width:100%;
-      box-sizing:border-box;
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:4px 6px;
-      font-size:12px;
-      text-align:center;
-      background:white;
-    }
-    input.cell:focus{
-      outline:none;
-      border-color:var(--blue);
-      box-shadow:0 0 0 2px rgba(37,99,235,.15);
-    }
-    input.cell[disabled]{
-      background:#f3f4f6;
-      color:#6b7280;
-      cursor:not-allowed;
+      font-size:13px; padding:6px 6px; text-align:center; white-space:nowrap;
     }
 
-    .muted{ color:var(--muted); }
-
-    .footer{
-      padding:8px 18px;
-      font-size:11px;
-      color:var(--muted);
+    /* inputs */
+    input[type="number"], input[type="text"], input[type="time"]{
+      width:70px; padding:4px 6px; font-size:13px; border:1px solid #c9ced8; border-radius:6px; text-align:center; background:#f9fafb;
     }
+    input.wide-text{width:180px; text-align:left;}
+    input.mid-text{width:120px;}
+    input.time{width:86px;}
+
+    /* خلي الأعمدة الضيقة مثل الصورة اليمين */
+    .tiny { width:46px !important; }
+    .small { width:58px !important; }
+    .col-uld-bc-plt-d-w input { width:46px; } /* ULD/BC/PLT/D/W */
   </style>
 </head>
-
 <body>
-  <header>
-    <div>
-      <h1>Flight Baggage & LB Monitor</h1>
-      <div class="subtitle">Live daily record from Supabase — filter by terminal and export CSV</div>
+
+  <div class="header">
+    <h2>Flight Baggage & LB Monitor</h2>
+    <div class="controls">
+      <button id="refreshBtn" class="btn">Refresh data</button>
+      <div id="countInfo">Flights: 0</div>
     </div>
-    <div class="topbar">
-      <button id="refreshBtn">Refresh data</button>
-      <div class="count" id="countLabel">Flights: 0</div>
-      <button id="exportBtn" style="margin-left:auto;">Export CSV</button>
-    </div>
-  </header>
-
-  <div class="tabs" id="tabs"></div>
-
-  <div class="wrap">
-    <div class="card">
-      <table id="tbl">
-        <colgroup>
-          <col class="w-flt">
-          <col class="w-tep">
-          <col class="w-time">
-          <col class="w-time">
-          <col class="w-small">
-          <col class="w-small">
-          <col class="w-small">
-          <col class="w-small">
-
-          <col class="w-time">  <!-- F ULD -->
-          <col class="w-time">  <!-- F BAG -->
-          <col class="w-time">  <!-- L ULD -->
-          <col class="w-time">  <!-- L BAG -->
-
-          <col class="w-small"> <!-- ULD -->
-          <col class="w-small"> <!-- BC -->
-          <col class="w-small"> <!-- PLT -->
-          <col class="w-small"> <!-- PAX (read only) -->
-          <col class="w-small"> <!-- D -->
-          <col class="w-small"> <!-- W -->
-
-          <col class="w-small"> <!-- Date (read only) -->
-          <col class="w-num">   <!-- TERMINATED BAGS -->
-          <col class="w-num">   <!-- DOMESTIC TRANSIT -->
-          <col class="w-num">   <!-- INTERNATIONAL TRANSIT -->
-
-          <col class="w-remark"> <!-- DROP 1 -->
-          <col class="w-remark"> <!-- DROP 2 -->
-          <col class="w-remark"> <!-- DROP 3 -->
-          <col class="w-remark"> <!-- ADDITIONAL -->
-        </colgroup>
-
-        <thead>
-          <tr>
-            <th>FLT</th>
-            <th>TEP</th>
-            <th>STA</th>
-            <th>ATA</th>
-            <th>BDY</th>
-            <th>TAR</th>
-            <th>ORG</th>
-            <th>Belt</th>
-
-            <th>F ULD</th>
-            <th>F BAG</th>
-            <th>L ULD</th>
-            <th>L BAG</th>
-
-            <th>ULD</th>
-            <th>BC</th>
-            <th>PLT</th>
-            <th>PAX</th>
-            <th>D</th>
-            <th>W</th>
-
-            <th>Date</th>
-            <th>TERMINATED BAGS</th>
-            <th>DOMESTIC TRANSIT</th>
-            <th>INTERNATIONAL TRANSIT</th>
-
-            <th>DROP LIST REMARK 1</th>
-            <th>DROP LIST REMARK 2</th>
-            <th>DROP LIST REMARK 3</th>
-            <th>Additional remark</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
+    <div class="tabs" id="tabs"></div>
   </div>
 
-  <div class="footer">
-    Changes save automatically. Realtime enabled for multi-user editing.
+  <div class="table-wrap">
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>FLT</th>
+          <th>TEP</th>
+          <th>STA</th>
+          <th>ATA</th>
+          <th>BDY</th>
+          <th>TAR</th>
+          <th>ORG</th>
+          <th>Belt</th>
+          <th>F ULD</th>
+          <th>F BAG</th>
+          <th>L ULD</th>
+          <th>L BAG</th>
+
+          <th>ULD</th>
+          <th>BC</th>
+          <th>PLT</th>
+          <th>D</th>
+          <th>W</th>
+
+          <th>Terminated bags</th>
+          <th>Domestic transit</th>
+          <th>International transit</th>
+
+          <th>Drop list remark 1</th>
+          <th>Drop list remark 2</th>
+          <th>Drop list remark 3</th>
+          <th>Additional remark</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <!-- Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/*** 1) حط معلوماتك هنا ***/
+const SUPABASE_URL = "PUT_YOUR_SUPABASE_URL_HERE";
+const SUPABASE_KEY = "PUT_YOUR_SUPABASE_ANON_KEY_HERE";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  <script>
-    /***********************
-     * 1) CONFIG
-     ***********************/
-    const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
-    const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+/*** 2) إعدادات عامة ***/
+const terminals = ["ALL", "T1", "T3", "T4"];
+let activeTerminal = "ALL";
+let flights = [];
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/*** Helpers ***/
+const fmtTime = (ts) => {
+  if(!ts) return "";
+  const d = new Date(ts);
+  if(Number.isNaN(d.getTime())) return "";
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mm = String(d.getMinutes()).padStart(2,"0");
+  return `${hh}:${mm}`;
+};
 
-    // اسم الـ view اللي تقرأ منه
-    const VIEW_NAME = "daily_record";  // نفس اللي سويته في SQL
+// يصنع Timestamp بنفس تاريخ الرحلة أو نفس تاريخ القيمة القديمة
+const applyTimeToTimestamp = (oldTs, timeStr, flightDateStr) => {
+  if(!timeStr) return null;
+  let baseDate = null;
 
-    // الأعمدة اللي تبيها editable
-    const EDITABLE_FIELDS = [
-      "f_uld","f_bag","l_uld","l_bag",
-      "uld","bc","plt","d","w",
-      "terminated_bags","domestic_transit","international_transit",
-      "drop_list_remark1","drop_list_remark2","drop_list_remark3",
-      "additional_remark"
-    ];
+  if(oldTs){
+    const dOld = new Date(oldTs);
+    if(!Number.isNaN(dOld.getTime())) baseDate = dOld;
+  }
+  if(!baseDate && flightDateStr){
+    const dFd = new Date(flightDateStr);
+    if(!Number.isNaN(dFd.getTime())) baseDate = dFd;
+  }
+  if(!baseDate){
+    baseDate = new Date(); // fallback
+  }
 
-    const TIME_FIELDS = ["f_uld","f_bag","l_uld","l_bag"]; // timestamps لكن نعرض HH:MM
-    const NUMBER_FIELDS = [
-      "uld","bc","plt","d","w",
-      "terminated_bags","domestic_transit","international_transit"
-    ];
-    const TEXT_FIELDS = [
-      "drop_list_remark1","drop_list_remark2","drop_list_remark3","additional_remark"
-    ];
+  const [hh, mm] = timeStr.split(":").map(Number);
+  baseDate.setHours(hh, mm, 0, 0);
+  return baseDate.toISOString();
+};
 
-    // فلاتر التيرمنال
-    const TERMINALS = ["ALL","T1","T3","T4"];
+async function updateCell(id, patch){
+  const { error } = await supabase.from("flights").update(patch).eq("id", id);
+  if(error){
+    console.error(error);
+    alert("فشل الحفظ: " + error.message);
+  }
+}
 
-    /***********************
-     * 2) STATE
-     ***********************/
-    let allRows = [];
-    let activeTerminal = "ALL";
-    let realtimeChannel = null;
-    let lastRenderKey = "";
+/*** Fetch data ***/
+async function loadFlights(){
+  let q = supabase.from("flights").select(`
+    id,
+    flt, tep, sta, ata, bdy, tar, org, belt,
+    f_uld, f_bag, l_uld, l_bag,
+    uld, bc, plt, d, w,
+    terminated_bags, domestic_transit, international_transit,
+    drop_list_remark1, drop_list_remark2, drop_list_remark3,
+    additional_remark, flight_date, terminal
+  `).order("sta");
 
-    /***********************
-     * 3) HELPERS
-     ***********************/
-    function pad2(n){ return String(n).padStart(2,"0"); }
+  if(activeTerminal !== "ALL"){
+    q = q.eq("terminal", activeTerminal);
+  }
 
-    function formatTimeFromTimestamp(ts) {
-      if(!ts) return "";
-      const d = new Date(ts);
-      if (isNaN(d)) return "";
-      return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
-    }
+  const { data, error } = await q;
+  if(error){ console.error(error); alert(error.message); return; }
 
-    // نحول HH:MM إلى timestamp based on flight_date عشان ما يصير 00:00
-    function mergeDateAndTime(flight_date, hhmm){
-      if(!flight_date || !hhmm) return null;
-      const [hh,mm] = hhmm.split(":").map(Number);
-      const base = new Date(flight_date + "T00:00:00");
-      base.setHours(hh,mm,0,0);
-      // نخزن كـ ISO بدون timezone offset (timestamp without tz)
-      const iso = base.getFullYear()+"-"+pad2(base.getMonth()+1)+"-"+pad2(base.getDate())+
-                  "T"+pad2(base.getHours())+":"+pad2(base.getMinutes())+":00";
-      return iso;
-    }
+  flights = data || [];
+  renderTable();
+}
 
-    function csvEscape(v){
-      if(v == null) return "";
-      const s = String(v).replace(/"/g,'""');
-      return `"${s}"`;
-    }
+/*** Render ***/
+function renderTable(){
+  document.getElementById("countInfo").textContent =
+    `Flights: ${flights.length} (${activeTerminal === "ALL" ? "ALL terminals" : "Terminal " + activeTerminal})`;
 
-    /***********************
-     * 4) FETCH
-     ***********************/
-    async function fetchRows(){
-      const { data, error } = await supabase
-        .from(VIEW_NAME)
-        .select("*")
-        .order("sta",{ascending:true});
+  const tbody = document.querySelector("#tbl tbody");
+  tbody.innerHTML = "";
 
-      if(error){
-        console.error(error);
-        alert("Error fetching data from Supabase");
-        return [];
-      }
-      return data || [];
-    }
+  for(const f of flights){
+    const tr = document.createElement("tr");
 
-    /***********************
-     * 5) UPDATE CELL (auto-save)
-     ***********************/
-    async function updateFlight(id, patch){
-      const { error } = await supabase
-        .from("flights")
-        .update(patch)
-        .eq("id", id);
+    const tdText = (v) => {
+      const td = document.createElement("td");
+      td.textContent = v ?? "";
+      return td;
+    };
 
-      if(error){
-        console.error(error);
-        alert("Save failed: " + error.message);
-        throw error;
-      }
-    }
+    tr.appendChild(tdText(f.flt));
+    tr.appendChild(tdText(f.tep));
+    tr.appendChild(tdText(fmtTime(f.sta)));
+    tr.appendChild(tdText(fmtTime(f.ata)));
+    tr.appendChild(tdText(f.bdy));
+    tr.appendChild(tdText(f.tar));
+    tr.appendChild(tdText(f.org));
+    tr.appendChild(tdText(f.belt));
 
-    /***********************
-     * 6) RENDER
-     ***********************/
-    function renderTabs(){
-      const tabsEl = document.getElementById("tabs");
-      tabsEl.innerHTML = "";
-      TERMINALS.forEach(t=>{
-        const el = document.createElement("div");
-        el.className = "tab " + (activeTerminal===t ? "active":"");
-        el.textContent = (t==="ALL") ? "ALL (All terminals)" : t;
-        el.onclick = ()=>{
-          activeTerminal = t;
-          renderTable();
-          renderTabs();
-        };
-        tabsEl.appendChild(el);
-      });
-    }
+    // Time inputs: F ULD / F BAG / L ULD / L BAG
+    tr.appendChild(timeInputCell(f, "f_uld"));
+    tr.appendChild(timeInputCell(f, "f_bag"));
+    tr.appendChild(timeInputCell(f, "l_uld"));
+    tr.appendChild(timeInputCell(f, "l_bag"));
 
-    function renderTable(){
-      const tbody = document.getElementById("tbody");
+    // tiny numeric inputs ULD BC PLT D W
+    tr.appendChild(numInputCell(f, "uld", "tiny col-uld-bc-plt-d-w"));
+    tr.appendChild(numInputCell(f, "bc",  "tiny col-uld-bc-plt-d-w"));
+    tr.appendChild(numInputCell(f, "plt", "tiny col-uld-bc-plt-d-w"));
+    tr.appendChild(numInputCell(f, "d",   "tiny col-uld-bc-plt-d-w"));
+    tr.appendChild(numInputCell(f, "w",   "tiny col-uld-bc-plt-d-w"));
 
-      const rows = activeTerminal==="ALL"
-        ? allRows
-        : allRows.filter(r => (r.terminal||r.tep) === activeTerminal);
+    tr.appendChild(numInputCell(f, "terminated_bags", "small"));
+    tr.appendChild(numInputCell(f, "domestic_transit", "small"));
+    tr.appendChild(numInputCell(f, "international_transit", "small"));
 
-      document.getElementById("countLabel").textContent =
-        `Flights: ${rows.length} (${activeTerminal==="ALL"?"ALL terminals":"Terminal "+activeTerminal})`;
+    tr.appendChild(textInputCell(f, "drop_list_remark1", "mid-text"));
+    tr.appendChild(textInputCell(f, "drop_list_remark2", "mid-text"));
+    tr.appendChild(textInputCell(f, "drop_list_remark3", "mid-text"));
+    tr.appendChild(textInputCell(f, "additional_remark", "wide-text"));
 
-      // تجنب رندر بدون سبب
-      const key = activeTerminal + "|" + rows.map(r=>r.id+":"+r.updated_at).join(",");
-      if(key === lastRenderKey) return;
-      lastRenderKey = key;
+    tr.appendChild(tdText(f.flight_date));
 
-      tbody.innerHTML = "";
+    tbody.appendChild(tr);
+  }
+}
 
-      rows.forEach(row=>{
-        const tr = document.createElement("tr");
+function timeInputCell(row, col){
+  const td = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = "time";
+  input.className = "time";
+  input.value = fmtTime(row[col]);
+  input.addEventListener("change", async (e)=>{
+    const t = e.target.value; // "HH:MM"
+    const newTs = applyTimeToTimestamp(row[col], t, row.flight_date);
+    row[col] = newTs;
+    await updateCell(row.id, { [col]: newTs });
+  });
+  td.appendChild(input);
+  return td;
+}
 
-        // helper لصناعة td عادي
-        function tdText(val, className=""){
-          const td = document.createElement("td");
-          if(className) td.className=className;
-          td.textContent = val ?? "";
-          return td;
-        }
+function numInputCell(row, col, cls=""){
+  const td = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = "number";
+  input.className = cls;
+  input.value = row[col] ?? "";
+  input.addEventListener("change", async (e)=>{
+    const v = e.target.value === "" ? null : Number(e.target.value);
+    row[col] = v;
+    await updateCell(row.id, { [col]: v });
+  });
+  td.appendChild(input);
+  return td;
+}
 
-        // helper لصناعة input قابل للتعديل
-        function tdInput(field, type){
-          const td = document.createElement("td");
-          const input = document.createElement("input");
-          input.className="cell";
-          input.dataset.id = row.id;
-          input.dataset.field = field;
+function textInputCell(row, col, cls=""){
+  const td = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = cls;
+  input.value = row[col] ?? "";
+  input.addEventListener("change", async (e)=>{
+    const v = e.target.value.trim() === "" ? null : e.target.value;
+    row[col] = v;
+    await updateCell(row.id, { [col]: v });
+  });
+  td.appendChild(input);
+  return td;
+}
 
-          if(type==="time"){
-            input.type="time";
-            input.step=60;
-            input.value = formatTimeFromTimestamp(row[field]);
-          } else if(type==="number"){
-            input.type="number";
-            input.value = row[field] ?? "";
-          } else {
-            input.type="text";
-            input.value = row[field] ?? "";
-          }
+/*** Tabs ***/
+function renderTabs(){
+  const tabsEl = document.getElementById("tabs");
+  tabsEl.innerHTML = "";
+  terminals.forEach(t=>{
+    const b = document.createElement("div");
+    b.className = "tab" + (t===activeTerminal ? " active":"");
+    b.textContent = t;
+    b.onclick = ()=>{ activeTerminal = t; renderTabs(); loadFlights(); };
+    tabsEl.appendChild(b);
+  });
+}
 
-          // autosave on change / blur
-          const save = async ()=>{
-            let value = input.value;
-            const patch = {};
+/*** Realtime (تحديث لحظي للجميع) ***/
+function setupRealtime(){
+  supabase.channel("flights-changes")
+    .on("postgres_changes",
+        { event:"*", schema:"public", table:"flights" },
+        (payload)=>{
+          // أبسط حل: إعادة تحميل البيانات عند أي تغيير
+          loadFlights();
+        })
+    .subscribe();
+}
 
-            if(type==="time"){
-              const merged = mergeDateAndTime(row.flight_date, value);
-              patch[field] = merged; // ISO string
-              input.value = value;   // يبقى HH:MM
-            } else if(type==="number"){
-              patch[field] = value === "" ? null : Number(value);
-            } else {
-              patch[field] = value === "" ? null : value;
-            }
+/*** Init ***/
+document.getElementById("refreshBtn").onclick = loadFlights;
+renderTabs();
+loadFlights();
+setupRealtime();
+</script>
 
-            // optimistic update locally
-            row[field] = patch[field];
-
-            try{
-              await updateFlight(row.id, patch);
-            }catch(e){
-              // في حالة فشل نرجع القيمة القديمة
-              renderTable();
-            }
-          };
-
-          input.addEventListener("change", save);
-          input.addEventListener("blur", save);
-
-          td.appendChild(input);
-          return td;
-        }
-
-        // الأعمدة الثابتة
-        tr.appendChild(tdText(row.flt));
-        tr.appendChild(tdText(row.tep || row.terminal));
-        tr.appendChild(tdText(formatTimeFromTimestamp(row.sta)));
-        tr.appendChild(tdText(formatTimeFromTimestamp(row.ata)));
-        tr.appendChild(tdText(row.bdy));
-        tr.appendChild(tdText(row.tar));
-        tr.appendChild(tdText(row.org));
-        tr.appendChild(tdText(row.belt));
-
-        // time editable
-        tr.appendChild(tdInput("f_uld","time"));
-        tr.appendChild(tdInput("f_bag","time"));
-        tr.appendChild(tdInput("l_uld","time"));
-        tr.appendChild(tdInput("l_bag","time"));
-
-        // numeric editable
-        tr.appendChild(tdInput("uld","number"));
-        tr.appendChild(tdInput("bc","number"));
-        tr.appendChild(tdInput("plt","number"));
-
-        // pax read-only
-        tr.appendChild(tdText(row.pax));
-
-        tr.appendChild(tdInput("d","number"));
-        tr.appendChild(tdInput("w","number"));
-
-        // date read-only
-        tr.appendChild(tdText(row.flight_date));
-
-        tr.appendChild(tdInput("terminated_bags","number"));
-        tr.appendChild(tdInput("domestic_transit","number"));
-        tr.appendChild(tdInput("international_transit","number"));
-
-        tr.appendChild(tdInput("drop_list_remark1","text"));
-        tr.appendChild(tdInput("drop_list_remark2","text"));
-        tr.appendChild(tdInput("drop_list_remark3","text"));
-        tr.appendChild(tdInput("additional_remark","text"));
-
-        tbody.appendChild(tr);
-      });
-    }
-
-    /***********************
-     * 7) EXPORT CSV
-     ***********************/
-    function exportCSV(){
-      const rows = activeTerminal==="ALL"
-        ? allRows
-        : allRows.filter(r => (r.terminal||r.tep) === activeTerminal);
-
-      const headers = [
-        "flt","tep","sta","ata","bdy","tar","org","belt",
-        "f_uld","f_bag","l_uld","l_bag",
-        "uld","bc","plt","pax","d","w","flight_date",
-        "terminated_bags","domestic_transit","international_transit",
-        "drop_list_remark1","drop_list_remark2","drop_list_remark3","additional_remark"
-      ];
-
-      const csv =
-        headers.join(",") + "\n" +
-        rows.map(r=>{
-          return headers.map(h=>{
-            if(TIME_FIELDS.includes(h)) return csvEscape(formatTimeFromTimestamp(r[h]));
-            return csvEscape(r[h]);
-          }).join(",");
-        }).join("\n");
-
-      const blob = new Blob([csv],{type:"text/csv;charset=utf-8"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href=url;
-      a.download = `daily_record_${activeTerminal}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    /***********************
-     * 8) REALTIME (multi-user like Excel)
-     ***********************/
-    function setupRealtime(){
-      if(realtimeChannel) supabase.removeChannel(realtimeChannel);
-
-      realtimeChannel = supabase
-        .channel("flights-realtime")
-        .on(
-          "postgres_changes",
-          { event:"*", schema:"public", table:"flights" },
-          payload=>{
-            const newRow = payload.new;
-            if(!newRow?.id) return;
-
-            // نحدّث الـ state
-            const idx = allRows.findIndex(r=>r.id===newRow.id);
-            if(idx>=0){
-              allRows[idx] = { ...allRows[idx], ...newRow };
-            }else{
-              // لو انضافت رحلة جديدة
-              allRows.push(newRow);
-            }
-            renderTable();
-          }
-        )
-        .subscribe();
-    }
-
-    /***********************
-     * 9) INIT
-     ***********************/
-    async function init(){
-      renderTabs();
-      document.getElementById("refreshBtn").onclick = async ()=>{
-        allRows = await fetchRows();
-        renderTable();
-      };
-      document.getElementById("exportBtn").onclick = exportCSV;
-
-      allRows = await fetchRows();
-      renderTable();
-      setupRealtime();
-    }
-
-    init();
-  </script>
 </body>
 </html>
