@@ -1,14 +1,15 @@
-// sw.js - BHSOps PWA Service Worker (simple cache-first)
-
-const CACHE_NAME = "bhsops-cache-v1";
+// sw.js  (BHSOps)
+const CACHE_NAME = "bhso-ops-v1";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
-  "./manifest.json"
-  // إذا عندك ملفات ثانية (css/js/images) ضيفها هنا
+  "./manifest.json",
+  "./sw.js",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
-// Install: cache basic files
+// Install: cache app shell
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
@@ -21,30 +22,26 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
-        })
+        keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null))
       )
     )
   );
   self.clients.claim();
 });
 
-// Fetch: try cache first, then network
+// Fetch: cache-first for local files, network for others
 self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((res) => {
-          // optional: cache new GET requests
-          if (event.request.method === "GET") {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return res;
-        })
-        .catch(() => cached); // fallback
-    })
-  );
+  const req = event.request;
+  const url = new URL(req.url);
+
+  // فقط ملفات نفس الدومين (GitHub Pages)
+  if (url.origin === location.origin) {
+    event.respondWith(
+      caches.match(req).then((cached) => cached || fetch(req))
+    );
+    return;
+  }
+
+  // أي شيء خارجي (Supabase etc.) يروح نتورك
+  event.respondWith(fetch(req).catch(() => caches.match("./")));
 });
