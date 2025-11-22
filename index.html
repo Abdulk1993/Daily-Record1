@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Flight Baggage &amp; LB Monitor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Supabase JS via CDN -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #f3f4f6;
+        margin: 0;
+        padding: 0;
+        color: #111827;
+      }
+
+      .app {
+        max-width: 1400px;
+        margin: 24px auto;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+        padding: 16px 20px 24px;
+      }
+
+      .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 16px;
+      }
+
+      .app-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #111827;
+      }
+
+      .app-subtitle {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 4px;
+      }
+
+      .header-right {
+        text-align: right;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+
+      .header-right strong {
+        font-weight: 600;
+        color: #4b5563;
+      }
+
+      .controls-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .left-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .right-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .btn {
+        border: none;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+
+      .btn-primary {
+        background: #2563eb;
+        color: #ffffff;
+      }
+
+      .btn-primary:hover {
+        background: #1d4ed8;
+      }
+
+      .btn-outline {
+        background: #ffffff;
+        color: #111827;
+        border: 1px solid #d1d5db;
+      }
+
+      .btn-outline:hover {
+        background: #f9fafb;
+      }
+
+      .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+
+      .flights-counter {
+        font-size: 13px;
+        color: #4b5563;
+      }
+
+      .flights-counter span {
+        font-weight: 600;
+      }
+
+      .terminal-tabs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+
+      .tab {
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 12px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.2;
+        min-width: 70px;
+        text-align: center;
+      }
+
+      .tab-label-main {
+        font-weight: 700;
+      }
+
+      .tab-label-sub {
+        font-size: 10px;
+        color: #6b7280;
+        margin-top: 1px;
+      }
+
+      .tab.active {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #1d4ed8;
+      }
+
+      .tab:not(.active) {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #e5e7eb;
+      }
+
+      .tab:not(.active):hover {
+        background: #e5e7eb;
+      }
+
+      .table-wrapper {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+      }
+
+      .table-header {
+        background: linear-gradient(to right, #e0f2fe, #dbeafe);
+        padding: 10px 16px;
+        font-size: 12px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .table-scroll {
+        max-height: 520px;
+        overflow: auto;
+        background: #ffffff;
+      }
+
+      table {
+        width: max-content;
+        min-width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+
+      thead {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+
+      thead tr th {
+        position: sticky;
+        top: 0;
+      }
+
+      thead tr {
+        background: #e5f0ff;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 6px 8px;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      th {
+        font-size: 11px;
+        font-weight: 700;
+        color: #374151;
+      }
+
+      td {
+        font-size: 11px;
+        color: #111827;
+      }
+
+      tbody tr:nth-child(even) {
+        background: #f9fafb;
+      }
+
+      tbody tr:nth-child(odd) {
+        background: #ffffff;
+      }
+
+      tbody tr:hover {
+        background: #eff6ff;
+      }
+
+      .col-flt {
+        min-width: 70px;
+      }
+
+      .col-text-left {
+        text-align: left;
+      }
+
+      .col-time {
+        min-width: 58px;
+      }
+
+      .col-date {
+        min-width: 74px;
+      }
+
+      .col-small {
+        min-width: 40px;
+      }
+
+      .col-status {
+        min-width: 70px;
+      }
+
+      .col-remark {
+        min-width: 130px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .status-ontime {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status-delayed {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+
+      .status-empty {
+        background: #e5e7eb;
+        color: #374151;
+      }
+
+      select.remark-select,
+      input.remark-input,
+      input.number-input {
+        width: 100%;
+        font-size: 11px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+      }
+
+      .number-input {
+        text-align: center;
+      }
+
+      .footer-note {
+        font-size: 10px;
+        color: #9ca3af;
+        text-align: right;
+        padding: 4px 8px 8px;
+      }
+
+      .hint-text {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 6px;
+      }
+
+      .error-box {
+        background: #fee2e2;
+        color: #b91c1c;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 11px;
+        margin-bottom: 8px;
+        display: none;
+      }
+
+      .error-box.show {
+        display: block;
+      }
+
+      .time-cell {
+        cursor: pointer;
+      }
+
+      .time-cell.empty {
+        color: #9ca3af;
+      }
+
+      /* Time modal */
+      .time-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.3);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+      }
+
+      .time-modal-overlay.show {
+        display: flex;
+      }
+
+      .time-modal {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 16px 20px 14px;
+        min-width: 260px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+      }
+
+      .time-modal-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+
+      .time-modal-subtitle {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 10px;
+      }
+
+      .time-modal-inputs {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        margin-bottom: 12px;
+      }
+
+      .time-select {
+        padding: 4px 6px;
+        font-size: 14px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+      }
+
+      .time-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .btn-ghost {
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 12px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        cursor: pointer;
+      }
+
+      .btn-ghost:hover {
+        background: #f3f4f6;
+      }
+
+      @media (max-width: 768px) {
+        .app {
+          margin: 8px;
+          padding: 12px;
+        }
+
+        .app-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .header-right {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app">
+      <div class="app-header">
+        <div>
+          <div class="app-title">Flight Baggage &amp; LB Monitor</div>
+          <div class="app-subtitle">
+            Live daily record from Supabase — filter by terminal and export to
+            Excel (CSV)
+          </div>
+        </div>
+        <div class="header-right">
+          <div>
+            Supabase Project:
+            <strong>wqhkvjwpdfblefycxawv</strong>
+          </div>
+          <div id="updatedAt">Updated: -</div>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <div class="left-controls">
+          <button id="refreshBtn" class="btn btn-primary">
+            Refresh data
+          </button>
+          <div id="flightsCounter" class="flights-counter">
+            Flights: <span>0</span> (ALL terminals)
+          </div>
+        </div>
+        <div class="right-controls">
+          <button id="exportBtn" class="btn btn-outline btn-sm">
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="terminal-tabs">
+        <button class="tab active" data-terminal="ALL">
+          <span class="tab-label-main">ALL</span>
+          <span class="tab-label-sub">All terminals</span>
+        </button>
+        <button class="tab" data-terminal="T1">
+          <span class="tab-label-main">T1</span>
+          <span class="tab-label-sub">Terminal 1</span>
+        </button>
+        <button class="tab" data-terminal="T3">
+          <span class="tab-label-main">T3</span>
+          <span class="tab-label-sub">Terminal 3</span>
+        </button>
+        <button class="tab" data-terminal="T4">
+          <span class="tab-label-main">T4</span>
+          <span class="tab-label-sub">Terminal 4</span>
+        </button>
+      </div>
+
+      <div class="hint-text">
+        Daily record view — use terminal tabs to filter and Export CSV to
+        download.
+      </div>
+
+      <div id="errorBox" class="error-box"></div>
+
+      <div class="table-wrapper">
+        <div class="table-header">
+          <strong>FLIGHT DAILY RECORD</strong>
+          <span style="margin-left: 6px; color: #6b7280">
+            Showing STA / ATA / baggage times, FB/LB status and remarks
+          </span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-flt">FLT</th>
+                <th class="col-small">TEP</th>
+                <th class="col-time">STA</th>
+                <th class="col-time">ATA</th>
+                <th class="col-small">BDY</th>
+                <th class="col-small">TAR</th>
+                <th class="col-small">ORG</th>
+                <th class="col-small">Belt</th>
+
+                <th class="col-time">F ULD</th>
+                <th class="col-time">F BAG</th>
+                <th class="col-time">L ULD</th>
+                <th class="col-time">L BAG</th>
+
+                <th class="col-small">ULD</th>
+                <th class="col-small">BC</th>
+                <th class="col-small">PLT</th>
+                <th class="col-small">PAX</th>
+                <th class="col-small">D</th>
+                <th class="col-small">W</th>
+                <th class="col-date">Date</th>
+                <th class="col-small">AOBT to FB</th>
+                <th class="col-small">AOBT to LB</th>
+                <th class="col-status">FB status</th>
+                <th class="col-status">LB status</th>
+                <th class="col-small">Terminated Bags</th>
+                <th class="col-small">Domestic Transit</th>
+                <th class="col-small">International Transit</th>
+                <th class="col-small">Left Behind</th>
+                <th class="col-remark">Drop List Remark 1</th>
+                <th class="col-remark">Drop List Remark 2</th>
+                <th class="col-remark">Drop List Remark 3</th>
+                <th class="col-remark">Additional Remark</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="footer-note">
+          Local file — data stays on your machine. Use "Export CSV" to share.
+        </div>
+      </div>
+    </div>
+
+    <!-- Time picker modal -->
+    <div id="timeModalOverlay" class="time-modal-overlay">
+      <div class="time-modal">
+        <div class="time-modal-title">Set time</div>
+        <div id="timeModalSubtitle" class="time-modal-subtitle"></div>
+        <div class="time-modal-inputs">
+          <select id="timeHour" class="time-select"></select>
+          <span>:</span>
+          <select id="timeMinute" class="time-select"></select>
+        </div>
+        <div class="time-modal-actions">
+          <button id="timeCancel" class="btn-ghost">Cancel</button>
+          <button id="timeSave" class="btn btn-primary btn-sm">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ======= Supabase setup =======
+      const SUPABASE_URL = "https://wqhkvjwpdfblefycxawv.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaGt2andwZGZibGVmeWN4YXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxMzI1MDcsImV4cCI6MjA3ODcwODUwN30.4sDEWDkwdjy_C_4bBzvwzZ8OfAMyA0x7beNiaoRfals";
+
+      const supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
+
+      let allFlights = [];
+      let currentTerminal = "ALL";
+
+      const tableBody = document.getElementById("tableBody");
+      const flightsCounter = document.getElementById("flightsCounter");
+      const updatedAtSpan = document.getElementById("updatedAt");
+      const errorBox = document.getElementById("errorBox");
+
+      // Time modal refs
+      const timeModalOverlay = document.getElementById("timeModalOverlay");
+      const timeModalSubtitle = document.getElementById("timeModalSubtitle");
+      const timeHourSelect = document.getElementById("timeHour");
+      const timeMinuteSelect = document.getElementById("timeMinute");
+      const timeCancelBtn = document.getElementById("timeCancel");
+      const timeSaveBtn = document.getElementById("timeSave");
+
+      let currentTimeEdit = null; // { flightId, field }
+
+      // Drop list items
+      const DROP_REMARKS = [
+        "A/C Movement",
+        "Absence of Baggage Ramp Representative",
+        "Aircraft compartment door jamming",
+        "Aircraft technical issue",
+        "Assign only 1 driver",
+        "Transit offloaded before local baggage",
+        "Cargo offloaded before PAX baggage",
+        "Carousel overstock of baggage",
+        "Compartment blocked by Catering/ Fuel truck",
+        "Dust condition",
+        "Rain condition",
+        "Fog condition",
+        "GH Lack of supervision in baggage hall",
+        "GH Lack of supervision under A/C",
+        "Jam fault",
+        "K9 unit inspection",
+        "Lack of operators",
+        "Mixed Transit Baggage",
+        "No headset man under A/C",
+        "No Standby driver due to shift change",
+        "No standby driver to remove empty ULDs",
+        "No standby driver under A/C",
+        "No standby Equipment under A/C",
+        "No standby group under A/C",
+        "No Standby labor due to shift change",
+        "No standby labor in baggage hall",
+        "Power Outage",
+        "Equipment defect",
+        "Shortage of driver",
+        "Shortage of equipment in baggage hall",
+        "Shortage of manpower in baggage hall",
+        "Shortage of manpower under A/C",
+        "Stand changed while landing",
+        "System failure",
+        "Using Pallet",
+        "Workstation operator not standing by for the flight",
+        "X-Ray breakdown",
+        "GH miscommunication",
+        "No Ground power under A/C",
+        "All ULDs received in one trip",
+        "AMP System Failure",
+        "BHS System Failure",
+        "ATA Late Recorded",
+        "Customs logout"
+      ];
+
+      function showError(message) {
+        if (!message) {
+          errorBox.classList.remove("show");
+          errorBox.textContent = "";
+          return;
+        }
+        errorBox.textContent = message;
+        errorBox.classList.add("show");
+      }
+
+      function formatTime(value) {
+        if (!value) return "";
+        return value;
+      }
+
+      function formatNumberCell(value) {
+        if (value === null || value === undefined) return "";
+        const n = Number(value);
+        if (Number.isNaN(n)) return "";
+        return n.toString();
+      }
+
+      function renderStatusPill(text, type) {
+        const cls =
+          type === "ONTIME"
+            ? "status-pill status-ontime"
+            : type === "DELAYED"
+            ? "status-pill status-delayed"
+            : "status-pill status-empty";
+        const label = text || "";
+        return `<span class="${cls}">${label}</span>`;
+      }
+
+      function createRemarkSelect(value, id, field) {
+        let optionsHtml = `<option value=""></option>`;
+        for (const item of DROP_REMARKS) {
+          const selected = item === value ? "selected" : "";
+          optionsHtml += `<option value="${item}" ${selected}>${item}</option>`;
+        }
+        return `<select class="remark-select" data-id="${id}" data-field="${field}">${optionsHtml}</select>`;
+      }
+
+      function createRemarkInput(value, id, field) {
+        const safe = value || "";
+        return `<input class="remark-input edit-text" data-id="${id}" data-field="${field}" type="text" value="${safe}" />`;
+      }
+
+      function renderTable() {
+        tableBody.innerHTML = "";
+
+        const rowsToShow =
+          currentTerminal === "ALL"
+            ? allFlights
+            : allFlights.filter(
+                (f) => (f.tep || "").trim() === currentTerminal
+              );
+
+        for (const row of rowsToShow) {
+          const tr = document.createElement("tr");
+          tr.dataset.id = row.id;
+
+          const fUldClass = row.f_uld ? "time-cell" : "time-cell empty";
+          const fBagClass = row.f_bag ? "time-cell" : "time-cell empty";
+          const lUldClass = row.l_uld ? "time-cell" : "time-cell empty";
+          const lBagClass = row.l_bag ? "time-cell" : "time-cell empty";
+
+          tr.innerHTML = `
+            <td class="col-flt col-text-left">${row.flt || ""}</td>
+            <td class="col-small">${row.tep || ""}</td>
+            <td class="col-time">${formatTime(row.sta)}</td>
+            <td class="col-time">${formatTime(row.ata)}</td>
+            <td class="col-small">${row.bdy || ""}</td>
+            <td class="col-small">${row.tar || ""}</td>
+            <td class="col-small">${row.org || ""}</td>
+            <td class="col-small">${row.belt || ""}</td>
+
+            <td class="col-time ${fUldClass}" data-field="f_uld" data-id="${row.id}">
+              ${formatTime(row.f_uld) || "--:--"}
+            </td>
+            <td class="col-time ${fBagClass}" data-field="f_bag" data-id="${row.id}">
+              ${formatTime(row.f_bag) || "--:--"}
+            </td>
+            <td class="col-time ${lUldClass}" data-field="l_uld" data-id="${row.id}">
+              ${formatTime(row.l_uld) || "--:--"}
+            </td>
+            <td class="col-time ${lBagClass}" data-field="l_bag" data-id="${row.id}">
+              ${formatTime(row.l_bag) || "--:--"}
+            </td>
+
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="uld_count"
+                     value="${row.uld_count ?? ""}" min="0" />
+            </td>
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="bc_count"
+                     value="${row.bc_count ?? ""}" min="0" />
+            </td>
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="plt_count"
+                     value="${row.plt_count ?? ""}" min="0" />
+            </td>
+            <td class="col-small">${formatNumberCell(row.pax)}</td>
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="drivers_count"
+                     value="${row.d ?? ""}" min="0" />
+            </td>
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="workers_count"
+                     value="${row.w ?? ""}" min="0" />
+            </td>
+
+            <td class="col-date">${row.flight_date || ""}</td>
+            <td class="col-small">${formatNumberCell(row.aobt_to_fb_minutes)}</td>
+            <td class="col-small">${formatNumberCell(row.aobt_to_lb_minutes)}</td>
+            <td class="col-status">${renderStatusPill(
+              row.fb_status,
+              row.fb_status
+            )}</td>
+            <td class="col-status">${renderStatusPill(
+              row.lb_status,
+              row.lb_status
+            )}</td>
+
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="terminated_bags"
+                     value="${row.terminated_bags ?? ""}" min="0" />
+            </td>
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="domestic_transit"
+                     value="${row.domestic_transit ?? ""}" min="0" />
+            </td>
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="international_transit"
+                     value="${row.international_transit ?? ""}" min="0" />
+            </td>
+            <td class="col-small">
+              <input type="number" class="number-input edit-number" data-id="${row.id}" data-field="left_behind"
+                     value="${row.left_behind ?? ""}" min="0" />
+            </td>
+
+            <td class="col-remark">
+              ${createRemarkSelect(row.drop_list_remark1, row.id, "drop_list_remark1")}
+            </td>
+            <td class="col-remark">
+              ${createRemarkSelect(row.drop_list_remark2, row.id, "drop_list_remark2")}
+            </td>
+            <td class="col-remark">
+              ${createRemarkSelect(row.drop_list_remark3, row.id, "drop_list_remark3")}
+            </td>
+            <td class="col-remark">
+              ${createRemarkInput(row.additional_remark, row.id, "additional_remark")}
+            </td>
+          `;
+
+          tableBody.appendChild(tr);
+        }
+
+        const total = allFlights.length;
+        const shown = rowsToShow.length;
+        flightsCounter.innerHTML = `Flights: <span>${shown}</span> ${
+          currentTerminal === "ALL"
+            ? "(ALL terminals)"
+            : `(Terminal ${currentTerminal})`
+        }`;
+      }
+
+      async function loadFlights() {
+        showError("");
+        const { data, error } = await supabaseClient
+          .from("daily_record")
+          .select("*")
+          .order("sta", { ascending: true });
+
+        if (error) {
+          console.error(error);
+          showError(
+            "Error loading data from Supabase: " +
+              (error.message || "Unknown error")
+          );
+          allFlights = [];
+        } else {
+          allFlights = data || [];
+        }
+
+        updatedAtSpan.textContent =
+          "Updated: " + new Date().toLocaleString("en-GB");
+        renderTable();
+      }
+
+      async function saveField(flightId, field, value) {
+        try {
+          showError("");
+          const update = {};
+          update[field] = value;
+          const { error } = await supabaseClient
+            .from("flights")
+            .update(update)
+            .eq("id", flightId);
+
+          if (error) {
+            console.error(error);
+            showError("Error saving field: " + error.message);
+          }
+        } catch (e) {
+          console.error(e);
+          showError("Unexpected error while saving.");
+        }
+      }
+
+      // ======= Time modal logic =======
+      function initTimeSelects() {
+        timeHourSelect.innerHTML = "";
+        timeMinuteSelect.innerHTML = "";
+
+        for (let h = 0; h < 24; h++) {
+          const opt = document.createElement("option");
+          opt.value = h.toString().padStart(2, "0");
+          opt.textContent = opt.value;
+          timeHourSelect.appendChild(opt);
+        }
+        for (let m = 0; m < 60; m++) {
+          const opt = document.createElement("option");
+          opt.value = m.toString().padStart(2, "0");
+          opt.textContent = opt.value;
+          timeMinuteSelect.appendChild(opt);
+        }
+      }
+
+      function openTimeModal(flightId, field) {
+        const flight = allFlights.find((f) => f.id === flightId);
+        if (!flight) return;
+
+        currentTimeEdit = { flightId, field };
+        const labelMap = {
+          f_uld: "F ULD (First ULD time)",
+          f_bag: "F BAG (First bag time)",
+          l_uld: "L ULD (Last ULD time)",
+          l_bag: "L BAG (Last bag time)"
+        };
+        timeModalSubtitle.textContent = labelMap[field] || "";
+
+        const currentValue = (flight[field] || "").trim();
+        let hh = "00";
+        let mm = "00";
+        if (currentValue && currentValue.includes(":")) {
+          const parts = currentValue.split(":");
+          hh = parts[0].padStart(2, "0");
+          mm = parts[1].padStart(2, "0");
+        }
+        timeHourSelect.value = hh;
+        timeMinuteSelect.value = mm;
+        timeModalOverlay.classList.add("show");
+      }
+
+      function closeTimeModal() {
+        currentTimeEdit = null;
+        timeModalOverlay.classList.remove("show");
+      }
+
+      timeCancelBtn.addEventListener("click", closeTimeModal);
+
+      timeSaveBtn.addEventListener("click", async () => {
+        if (!currentTimeEdit) return;
+        const { flightId, field } = currentTimeEdit;
+        const flight = allFlights.find((f) => f.id === flightId);
+        if (!flight) {
+          closeTimeModal();
+          return;
+        }
+
+        const hh = timeHourSelect.value;
+        const mm = timeMinuteSelect.value;
+
+        // نستخدم flight_date_raw عشان التاريخ الصحيح
+        const baseDate = flight.flight_date_raw; // شكلها "2025-09-27"
+        const fullTimestamp = `${baseDate}T${hh}:${mm}:00`;
+
+        await saveField(flightId, field, fullTimestamp);
+        closeTimeModal();
+      });
+
+      // ======= Event listeners =======
+
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", loadFlights);
+
+      document.querySelectorAll(".tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".tab")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          currentTerminal = btn.getAttribute("data-terminal");
+          renderTable();
+        });
+      });
+
+      // Delegation على جسم الجدول
+      tableBody.addEventListener("click", (e) => {
+        const cell = e.target.closest(".time-cell");
+        if (!cell) return;
+        const flightId = cell.dataset.id;
+        const field = cell.dataset.field;
+        if (!flightId || !field) return;
+        openTimeModal(flightId, field);
+      });
+
+      tableBody.addEventListener("change", async (e) => {
+        const target = e.target;
+
+        // أرقام
+        if (target.classList.contains("edit-number")) {
+          const flightId = target.dataset.id;
+          const field = target.dataset.field;
+          let value = target.value;
+          if (value === "") value = null;
+          else value = Number(value);
+          await saveField(flightId, field, value);
+          return;
+        }
+
+        // الدروب ليست
+        if (target.classList.contains("remark-select")) {
+          const flightId = target.dataset.id;
+          const field = target.dataset.field;
+          const value = target.value || null;
+          await saveField(flightId, field, value);
+          return;
+        }
+
+        // نص إضافي
+        if (target.classList.contains("edit-text")) {
+          const flightId = target.dataset.id;
+          const field = target.dataset.field;
+          const value = target.value || null;
+          await saveField(flightId, field, value);
+        }
+      });
+
+      // Export CSV (نفس السابق)
+      document
+        .getElementById("exportBtn")
+        .addEventListener("click", function () {
+          const rows =
+            currentTerminal === "ALL"
+              ? allFlights
+              : allFlights.filter(
+                  (f) => (f.tep || "").trim() === currentTerminal
+                );
+
+          const header = [
+            "FLT",
+            "TEP",
+            "STA",
+            "ATA",
+            "BDY",
+            "TAR",
+            "ORG",
+            "Belt",
+            "F ULD",
+            "F BAG",
+            "L ULD",
+            "L BAG",
+            "ULD",
+            "BC",
+            "PLT",
+            "PAX",
+            "D",
+            "W",
+            "Date",
+            "AOBT to FB",
+            "AOBT to LB",
+            "FB status",
+            "LB status",
+            "Terminated Bags",
+            "Domestic Transit",
+            "International Transit",
+            "Left Behind",
+            "Drop List Remark 1",
+            "Drop List Remark 2",
+            "Drop List Remark 3",
+            "Additional Remark"
+          ];
+
+          const csvRows = [];
+          csvRows.push(header.join(","));
+
+          for (const row of rows) {
+            const r = [
+              row.flt || "",
+              row.tep || "",
+              row.sta || "",
+              row.ata || "",
+              row.bdy || "",
+              row.tar || "",
+              row.org || "",
+              row.belt || "",
+              row.f_uld || "",
+              row.f_bag || "",
+              row.l_uld || "",
+              row.l_bag || "",
+              row.uld_count ?? "",
+              row.bc_count ?? "",
+              row.plt_count ?? "",
+              row.pax ?? "",
+              row.d ?? "",
+              row.w ?? "",
+              row.flight_date || "",
+              row.aobt_to_fb_minutes ?? "",
+              row.aobt_to_lb_minutes ?? "",
+              row.fb_status || "",
+              row.lb_status || "",
+              row.terminated_bags ?? "",
+              row.domestic_transit ?? "",
+              row.international_transit ?? "",
+              row.left_behind ?? "",
+              row.drop_list_remark1 || "",
+              row.drop_list_remark2 || "",
+              row.drop_list_remark3 || "",
+              row.additional_remark || ""
+            ];
+            csvRows.push(
+              r
+                .map((val) => {
+                  const v = val === null || val === undefined ? "" : String(val);
+                  if (v.includes(",") || v.includes('"') || v.includes("\n")) {
+                    return `"${v.replace(/"/g, '""')}"`;
+                  }
+                  return v;
+                })
+                .join(",")
+            );
+          }
+
+          const blob = new Blob([csvRows.join("\r\n")], {
+            type: "text/csv;charset=utf-8;"
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          const datePart = new Date().toISOString().slice(0, 10);
+          a.href = url;
+          a.download = `daily_record_${currentTerminal}_${datePart}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+
+      // ======= Realtime الاشتراك مع Supabase =======
+      function initRealtime() {
+        supabaseClient
+          .channel("flights-realtime")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "flights" },
+            (payload) => {
+              // أي تغيير → نعيد تحميل الـ view
+              loadFlights();
+            }
+          )
+          .subscribe();
+      }
+
+      // ======= Init =======
+      initTimeSelects();
+      loadFlights();
+      initRealtime();
+    </script>
+  </body>
+</html>
