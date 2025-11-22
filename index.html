@@ -176,6 +176,15 @@
     .modal-btn.cancel { background: #e5e7eb; color: #374151; }
     .modal-btn.save { background: #2563eb; color: white; }
   </style>
+  <!-- PWA -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#2563eb">
+
+<!-- iOS support -->
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BHSOps">
 </head>
 
 <body>
@@ -914,5 +923,13 @@
     initTimeSelectors();
     loadFlights();
   </script>
+  <script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js");
+    });
+  }
+</script>
 </body>
+
 </html>
